@@ -110,11 +110,12 @@ data "aws_iam_policy_document" "confianza_github" {
       variable = "${local.oidc_host}:aud"
       values   = ["sts.amazonaws.com"]
     }
-    # Solo los jobs que corren en el environment "demo" de este repositorio
+    # Solo los jobs del environment "demo" de este repositorio. GitHub emite el sub con IDs inmutables
+    # (owner@id/repo@id): un repositorio borrado y recreado con el mismo nombre NO hereda el acceso.
     condition {
       test     = "StringEquals"
       variable = "${local.oidc_host}:sub"
-      values   = [for env in var.github_environments : "repo:${var.github_repo}:environment:${env}"]
+      values   = [for env in var.github_environments : "repo:${var.github_oidc_repo}:environment:${env}"]
     }
   }
 }
