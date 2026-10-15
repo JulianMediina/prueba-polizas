@@ -1,0 +1,11 @@
+title = "polizas"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Valores de ejemplo y datos sintéticos de demostración"
+paths = [
+  '''\.env\.example$''',
+  '''backend/src/main/resources/db/migration/V3__datos_demo\.sql$''',
+]
