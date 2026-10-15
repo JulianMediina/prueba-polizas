@@ -1,0 +1,39 @@
+name: Destroy demo
+
+# Apaga y elimina el entorno demo (EC2, CloudFront, ECR, red y parámetros).
+# El bootstrap (bucket de estado y rol OIDC) se conserva; se elimina a mano con terraform destroy en infra/bootstrap.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: 'Escriba DESTRUIR para confirmar'
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-demo
+  cancel-in-progress: false
+
+jobs:
+  destroy:
+    if: inputs.confirmar == 'DESTRUIR'
+    runs-on: ubuntu-24.04
+    environment: demo
+    defaults:
+      run:
+        working-directory: infra/envs/demo
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+      - run: terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+      - run: terraform destroy -input=false -auto-approve

@@ -1,0 +1,170 @@
+name: Deploy demo
+
+# Despliegue continuo del entorno demo en AWS. Sin llaves estáticas: el job asume un rol IAM por OIDC,
+# y solo los jobs del environment "demo" de este repositorio pueden asumirlo.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '**/*.md', 'sql/**', 'scripts/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-demo
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: 'true'
+  TF_VERSION: 1.16.6
+
+jobs:
+  infra:
+    name: Terraform apply (envs/demo)
+    runs-on: ubuntu-24.04
+    environment: demo
+    outputs:
+      registry: ${{ steps.out.outputs.registry }}
+      instance_id: ${{ steps.out.outputs.instance_id }}
+      url: ${{ steps.out.outputs.url }}
+    defaults:
+      run:
+        working-directory: infra/envs/demo
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - run: terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+      - run: terraform apply -input=false -auto-approve
+      - id: out
+        run: |
+          echo "registry=$(terraform output -raw ecr_registro)" >> "$GITHUB_OUTPUT"
+          echo "instance_id=$(terraform output -raw instance_id)" >> "$GITHUB_OUTPUT"
+          echo "url=$(terraform output -raw url)" >> "$GITHUB_OUTPUT"
+
+  imagenes:
+    name: Imagen ${{ matrix.app }} (linux/arm64)
+    needs: infra
+    runs-on: ubuntu-24.04
+    environment: demo
+    strategy:
+      matrix:
+        app: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v4
+      - name: Build y push
+        uses: docker/build-push-action@v7
+        with:
+          context: ./${{ matrix.app }}
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          tags: ${{ needs.infra.outputs.registry }}/polizas-${{ matrix.app }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+      - name: Escaneo de vulnerabilidades (Trivy, informativo)
+        run: |
+          docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN -e AWS_REGION \
+            aquasec/trivy:0.76.0 image --quiet --platform linux/arm64 --severity HIGH,CRITICAL --ignore-unfixed \
+            --exit-code 0 "${{ needs.infra.outputs.registry }}/polizas-${{ matrix.app }}:${{ github.sha }}"
+
+  desplegar:
+    name: Desplegar en EC2 (SSM) + smoke test
+    needs: [infra, imagenes]
+    runs-on: ubuntu-24.04
+    environment:
+      name: demo
+      url: ${{ needs.infra.outputs.url }}
+    env:
+      INSTANCE_ID: ${{ needs.infra.outputs.instance_id }}
+      REGISTRY: ${{ needs.infra.outputs.registry }}
+      URL: ${{ needs.infra.outputs.url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Esperar a que la instancia esté registrada en SSM
+        run: |
+          for i in $(seq 1 60); do
+            estado=$(aws ssm describe-instance-information --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+              --query 'InstanceInformationList[0].PingStatus' --output text 2>/dev/null || true)
+            [ "$estado" = "Online" ] && echo "SSM online" && exit 0
+            echo "Esperando SSM ($i/60): $estado"; sleep 10
+          done
+          echo "::error::La instancia no se registró en SSM"; exit 1
+
+      - name: Desplegar con Docker Compose vía SSM Run Command
+        run: |
+          COMPOSE_B64=$(base64 -w0 deploy/compose.prod.yml)
+          ROLES_B64=$(base64 -w0 deploy/postgres/01-roles.sh)
+          cat > remoto.sh <<EOF
+          set -euo pipefail
+          export HOME=/root
+          cloud-init status --wait >/dev/null || true
+          cd /opt/polizas
+          install -d -m 0755 postgres
+          echo '$COMPOSE_B64' | base64 -d > compose.yml
+          echo '$ROLES_B64' | base64 -d > postgres/01-roles.sh
+          chmod 0755 postgres/01-roles.sh
+          param() { aws ssm get-parameter --region "$AWS_REGION" --with-decryption --name "/polizas/demo/\$1" --query Parameter.Value --output text; }
+          umask 077
+          {
+            echo "REGISTRY=$REGISTRY"
+            echo "IMAGE_TAG=$GITHUB_SHA"
+            echo "API_KEY=\$(param api-key)"
+            echo "DB_OWNER_PASSWORD=\$(param db-owner-password)"
+            echo "DB_APP_PASSWORD=\$(param db-app-password)"
+            echo "ORIGIN_SECRET=\$(param origin-secret)"
+          } > .env
+          aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$REGISTRY" >/dev/null
+          docker compose pull --quiet
+          docker compose up -d --remove-orphans --wait --wait-timeout 420
+          docker image prune -af --filter "until=24h" >/dev/null || true
+          docker compose ps --format 'table {{.Service}}\t{{.Status}}'
+          EOF
+          jq -n --rawfile s remoto.sh '{commands: [$s]}' > params.json
+          CMD_ID=$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name AWS-RunShellScript \
+            --comment "deploy ${GITHUB_SHA::7}" --timeout-seconds 900 --parameters file://params.json \
+            --query Command.CommandId --output text)
+          echo "Comando SSM: $CMD_ID"
+          for i in $(seq 1 90); do
+            sleep 10
+            estado=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$estado" in Pending|InProgress|Delayed) echo "($i) $estado";; *) break;; esac
+          done
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --query '[StandardOutputContent,StandardErrorContent]' --output text
+          [ "$estado" = "Success" ] || { echo "::error::El despliegue terminó en estado $estado"; exit 1; }
+
+      - name: Smoke test a través de CloudFront
+        run: |
+          espera() { for i in $(seq 1 30); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$@")" = "$codigo" ] && return 0; sleep 10; done; return 1; }
+          codigo=200 espera "$URL/actuator/health"
+          codigo=200 espera "$URL/"
+          codigo=200 espera "$URL/api/polizas?size=1"
+          codigo=401 espera "$URL/polizas"
+          echo "Health, SPA, BFF (/api) y 401 sin API key: OK"
+          {
+            echo "### Demo desplegada"
+            echo ""
+            echo "- URL: $URL"
+            echo "- Imagen: \`${GITHUB_SHA::7}\` (linux/arm64)"
+          } >> "$GITHUB_STEP_SUMMARY"

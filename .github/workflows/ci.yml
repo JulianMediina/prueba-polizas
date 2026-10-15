@@ -37,6 +37,60 @@ jobs:
           path: backend/target/site/jacoco/
           if-no-files-found: ignore
 
+  frontend:
+    name: Frontend (lint + tests + build)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx ng lint
+      - run: npx ng test --watch=false
+      - run: npx ng build --configuration production
+      - name: La API key nunca debe estar en el bundle
+        run: |
+          if grep -rqi "x-api-key" dist/; then
+            echo "::error::El bundle del frontend referencia x-api-key"; exit 1
+          fi
+      - name: Auditoría de dependencias de producción
+        run: npm audit --omit=dev --audit-level=high
+
+  infra:
+    name: IaC (fmt + validate + tflint + Trivy)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.6
+      - run: terraform fmt -check -recursive infra
+      - name: terraform validate
+        run: |
+          for dir in infra/bootstrap infra/envs/demo; do
+            terraform -chdir="$dir" init -backend=false -input=false >/dev/null
+            terraform -chdir="$dir" validate
+          done
+      - uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: v0.64.0
+      - name: tflint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          tflint --init --config "$PWD/infra/.tflint.hcl"
+          cd infra && tflint --recursive --config "$(pwd)/.tflint.hcl"
+      - name: Trivy (misconfiguraciones IaC y Dockerfiles, informativo)
+        run: |
+          docker run --rm -v "$PWD:/repo" aquasec/trivy:0.76.0 config --quiet --severity HIGH,CRITICAL \
+            --exit-code 0 /repo
+
   secretos:
     name: Escaneo de secretos (Gitleaks)
     runs-on: ubuntu-24.04

@@ -1,0 +1,35 @@
+#!/bin/bash
+# Preparación del host (se ejecuta una vez, en el primer arranque).
+# La aplicación NO se instala aquí: la despliega el pipeline vía SSM en cada push a main.
+set -euxo pipefail
+
+dnf -y install docker
+systemctl enable --now docker
+
+# Docker Compose v2 como plugin (versión fija)
+mkdir -p /usr/local/lib/docker/cli-plugins
+curl -fsSL -o /usr/local/lib/docker/cli-plugins/docker-compose \
+  "https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-aarch64"
+chmod 0755 /usr/local/lib/docker/cli-plugins/docker-compose
+
+# Swap de 1 GB: margen de memoria para Postgres + JVM + nginx en 2 GB de RAM
+if [ ! -f /swapfile ]; then
+  fallocate -l 1G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+# Rotación de logs de contenedores
+cat > /etc/docker/daemon.json <<'JSON'
+{
+  "log-driver": "json-file",
+  "log-opts": { "max-size": "20m", "max-file": "3" },
+  "live-restore": true
+}
+JSON
+systemctl restart docker
+
+install -d -m 0700 /opt/polizas
+touch /var/lib/cloud/instance/polizas-host-listo
