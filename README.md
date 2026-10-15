@@ -8,10 +8,10 @@ con el CORE e infraestructura como código.
 
 ## Demo en línea
 
-**URL:** __URL_DEMO__ (disponible durante el periodo de evaluación)
+**URL:** https://d3l78drj5ly5ij.cloudfront.net (disponible durante el periodo de evaluación)
 
 - Interfaz web: la URL raíz.
-- API directa (exige `x-api-key`): `__URL_DEMO__/polizas`. La key de la demo se entrega por separado; no está en
+- API directa (exige `x-api-key`): `https://d3l78drj5ly5ij.cloudfront.net/polizas`. La key de la demo se entrega por separado; no está en
   el repositorio.
 
 ## Entregables por módulo
