@@ -21,3 +21,9 @@ variable "github_environments" {
   type        = list(string)
   default     = ["demo"]
 }
+
+variable "github_oidc_repo" {
+  description = "Repositorio en el formato inmutable del claim sub de OIDC: owner@owner_id/repo@repo_id (gh api repos/OWNER/REPO/actions/oidc/customization/sub)"
+  type        = string
+  default     = "JulianMediina@47359517/prueba-polizas@1421232822"
+}
