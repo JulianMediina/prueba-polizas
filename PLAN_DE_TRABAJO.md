@@ -27,6 +27,19 @@
 | CD | **GitHub Actions + OIDC**: build → push de imágenes a **GHCR** → `terraform apply` → despliegue en la EC2 vía **SSM** (sin SSH, sin puerto 22). Workflow manual `destroy` | Sin secretos estáticos de AWS; apagado limpio al terminar. |
 | Herramientas locales | Instalación con **winget**: Temurin 21, Node LTS, Terraform, AWS CLI, gh, Docker Desktop (WSL2) | El equipo solo tenía git. |
 
+### 0.1 Ajustes durante la ejecución (2026-10-15)
+
+| Plan original | Lo ejecutado | Motivo |
+|---|---|---|
+| Spring Boot 3.x | **Spring Boot 4.1.1** | Versión estable vigente en Initializr. |
+| Angular ≥ 18 | **Angular 22.2** (zoneless, `rxResource`, Vitest) | Versión estable vigente. |
+| Testcontainers | **PostgreSQL embebido (zonky)** | El equipo no tiene Docker (sin admin ni WSL2); los tests corren igual en local y en CI, sin Docker. |
+| winget + Docker Desktop | **Herramientas portables** en `%USERPROFILE%\tools` (JDK, Node, Terraform, AWS CLI, gh) | Windows 10 LTSC sin winget y usuario sin privilegios de administrador. Docker solo en CI. |
+| Caddy + `sslip.io` | **CloudFront** (`*.cloudfront.net`) | HTTPS sin emitir certificados ni depender de los límites de Let's Encrypt; el SG admite solo la prefix list de CloudFront. |
+| GHCR | **ECR** | El repositorio quedó privado: con ECR la instancia descarga con su rol IAM, sin tokens de GitHub. |
+| Repo público con branch protection | **Repo privado** | Crear un repo público requiere confirmación del dueño. Ramas protegidas no están disponibles en repos privados gratuitos; igual se trabajó con PR + CI en verde. |
+| `sub` OIDC `repo:owner/repo:…` | **Formato inmutable** `repo:owner@id/repo@id:environment:demo` | Es el formato que emite GitHub para este repositorio. Además impide que un repo recreado con el mismo nombre herede el acceso. |
+
 ---
 
 ## 1. Estructura del monorepo
