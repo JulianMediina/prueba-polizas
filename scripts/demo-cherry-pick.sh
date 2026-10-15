@@ -4,7 +4,7 @@ set -euo pipefail
 
 DIR=$(mktemp -d)
 trap 'rm -rf "$DIR"' EXIT
-cd "$DIR"
+cd "$DIR" || exit 1
 
 git init -q -b main
 git config user.name "Demo"
