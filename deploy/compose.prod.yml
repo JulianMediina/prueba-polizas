@@ -1,0 +1,67 @@
+# Compose del entorno demo (EC2). Lo copia el pipeline a /opt/polizas/compose.yml vía SSM.
+# Las variables llegan en /opt/polizas/.env, generado en la instancia desde SSM Parameter Store.
+name: polizas
+
+services:
+  postgres:
+    image: postgres:16.15-alpine
+    environment:
+      POSTGRES_DB: polizas
+      POSTGRES_USER: polizas_owner
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?}
+      DB_APP_USER: polizas_app
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/01-roles.sh:/docker-entrypoint-initdb.d/01-roles.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    mem_limit: 384m
+    restart: unless-stopped
+
+  backend:
+    image: ${REGISTRY:?}/polizas-backend:${IMAGE_TAG:?}
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/polizas
+      DB_APP_USER: polizas_app
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+      DB_OWNER_USER: polizas_owner
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD}
+      API_KEY: ${API_KEY:?}
+      CORE_BASE_URL: http://localhost:8080
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 768m
+    restart: unless-stopped
+
+  frontend:
+    image: ${REGISTRY}/polizas-frontend:${IMAGE_TAG}
+    environment:
+      API_KEY: ${API_KEY}
+      BACKEND_HOST: backend
+      ORIGIN_SECRET: ${ORIGIN_SECRET:?}
+    ports:
+      - "80:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 128m
+    restart: unless-stopped
+
+volumes:
+  pgdata:
