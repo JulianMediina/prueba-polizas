@@ -11,7 +11,11 @@ git config user.name "Demo"
 git config user.email "demo@example.com"
 git config core.autocrlf false
 
-paso() { printf '\n\033[1;34m▶ %s\033[0m\n' "$*"; }
+paso() {
+  local titulo="$1"
+  printf '\n\033[1;34m▶ %s\033[0m\n' "$titulo"
+  return 0
+}
 
 paso "Estado inicial de main"
 printf 'def login(user, password):\n    return check(user, password)\n' > auth.py
@@ -38,7 +42,7 @@ git log --oneline -n 3
 
 paso "Verificaciones"
 grep -q "rate_limit" auth.py && echo "✔ La feature tiene el fix de seguridad"
-[ ! -f reportes.py ] && [ ! -f dashboard.py ] && echo "✔ No se trajeron reportes.py ni dashboard.py"
+[[ ! -f reportes.py && ! -f dashboard.py ]] && echo "✔ No se trajeron reportes.py ni dashboard.py"
 git log -1 --format=%B | grep -q "cherry picked from commit $FIX" && echo "✔ Trazabilidad: el mensaje referencia el commit original"
 
 paso "Commits de main que aún NO están en la feature (el fix ya no aparece: mismo patch-id)"
