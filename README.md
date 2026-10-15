@@ -94,7 +94,7 @@ infra/
 
 | Workflow | Disparador | Qué hace |
 |---|---|---|
-| [`ci.yml`](.github/workflows/ci.yml) | PR y push | Backend (tests + JaCoCo), frontend (lint, tests, build, key fuera del bundle, `npm audit`), IaC (fmt, validate, tflint, Trivy), Gitleaks |
+| [`ci.yml`](.github/workflows/ci.yml) | PR y push | Backend (tests + JaCoCo), **e2e con docker compose** (SPA, BFF, 401/409/422, registro CORE-MOCK), frontend (lint, tests, build, key fuera del bundle, `npm audit`), IaC (fmt, validate, tflint, Trivy), Gitleaks |
 | [`deploy.yml`](.github/workflows/deploy.yml) | push a `main` | `terraform apply` → imágenes arm64 a ECR (+ Trivy) → despliegue vía SSM → smoke test |
 | [`destroy.yml`](.github/workflows/destroy.yml) | manual (escribir `DESTRUIR`) | `terraform destroy` del entorno demo |
 
