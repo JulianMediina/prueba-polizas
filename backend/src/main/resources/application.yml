@@ -1,0 +1,68 @@
+# Sin secretos: todo valor sensible llega por variables de entorno.
+spring:
+  application:
+    name: polizas
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/polizas}
+    username: ${DB_APP_USER:polizas_app}
+    password: ${DB_APP_PASSWORD:}
+    hikari:
+      maximum-pool-size: 10
+  flyway:
+    # Las migraciones (DDL) corren con el usuario dueño del esquema; la app usa un usuario solo DML.
+    user: ${DB_OWNER_USER:${spring.datasource.username}}
+    password: ${DB_OWNER_PASSWORD:${spring.datasource.password}}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+app:
+  zona-horaria: America/Bogota
+  security:
+    api-key: ${API_KEY:}
+    cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  core:
+    base-url: ${CORE_BASE_URL:http://localhost:${server.port:8080}}
+    api-key: ${CORE_API_KEY:${app.security.api-key}}
+    connect-timeout: 1s
+    read-timeout: 2s
+    max-intentos: 3
+    espera-inicial: 200ms
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+logging:
+  structured:
+    format:
+      console: ecs
