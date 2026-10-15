@@ -62,6 +62,43 @@ jobs:
       - name: Auditoría de dependencias de producción
         run: npm audit --omit=dev --audit-level=high
 
+  e2e:
+    name: E2E (docker compose + smoke test)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Variables de prueba
+        run: |
+          {
+            echo "API_KEY=123456"
+            echo "DB_OWNER_PASSWORD=$(openssl rand -hex 16)"
+            echo "DB_APP_PASSWORD=$(openssl rand -hex 16)"
+          } > .env
+      - name: Levantar el stack completo
+        run: docker compose up -d --build --wait --wait-timeout 300
+      - name: Smoke test de punta a punta
+        run: |
+          set -euo pipefail
+          FRONT=http://localhost:8080 API=http://localhost:8081 KEY="x-api-key: 123456"
+          code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          [ "$(code "$FRONT/")" = 200 ]                                   && echo "✔ SPA"
+          [ "$(code "$FRONT/poliza/1")" = 200 ]                           && echo "✔ ruta profunda de la SPA"
+          [ "$(code "$FRONT/api/polizas?size=1")" = 200 ]                 && echo "✔ BFF /api agrega la key"
+          [ "$(code "$API/polizas")" = 401 ]                              && echo "✔ 401 sin x-api-key"
+          [ "$(code -H "$KEY" "$API/polizas?tipo=COLECTIVA&estado=ACTIVA")" = 200 ] && echo "✔ listar"
+          [ "$(code -H "$KEY" -X POST "$API/polizas/1/renovar")" = 200 ] && echo "✔ renovar"
+          [ "$(code -H "$KEY" -X POST "$API/polizas/3/renovar")" = 409 ] && echo "✔ 409 renovar cancelada"
+          [ "$(code -H "$KEY" -X POST "$API/riesgos/1/cancelar")" = 422 ] && echo "✔ 422 riesgo de individual"
+          [ "$(code -H "$KEY" -X POST "$API/polizas/6/cancelar")" = 200 ] && echo "✔ cancelar"
+          sleep 3
+          docker compose logs backend | grep -q "CORE-MOCK evento=ACTUALIZACION polizaId=1" \
+            && echo "✔ el CORE-MOCK registró la renovación"
+          docker compose logs backend | grep -q "CORE-MOCK evento=ACTUALIZACION polizaId=6" \
+            && echo "✔ el CORE-MOCK registró la cancelación"
+      - name: Logs si falla
+        if: failure()
+        run: docker compose logs --tail 200
+
   infra:
     name: IaC (fmt + validate + tflint + Trivy)
     runs-on: ubuntu-24.04
