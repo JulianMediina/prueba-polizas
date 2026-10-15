@@ -1,0 +1,159 @@
+<a mat-button routerLink="/" class="volver"><mat-icon>arrow_back</mat-icon> Pólizas</a>
+
+@if (poliza.error()) {
+  <section class="card estado-vista" role="alert">
+    <mat-icon>error_outline</mat-icon>
+    <p>No fue posible cargar la póliza.</p>
+    <a mat-stroked-button routerLink="/">Volver al listado</a>
+  </section>
+} @else if (p(); as p) {
+  <header class="encabezado">
+    <div>
+      <div class="titulo">
+        <h1 class="mono">{{ p.numero }}</h1>
+        <app-estado-chip [estado]="p.estado" />
+      </div>
+      <p class="muted">
+        Póliza {{ p.tipo === 'INDIVIDUAL' ? 'individual' : 'colectiva' }} · {{ p.tomador.nombre }}
+      </p>
+    </div>
+    @if (!cancelada()) {
+      <div class="acciones">
+        <button mat-stroked-button (click)="cancelar()" [disabled]="procesando()" class="peligro">
+          <mat-icon>block</mat-icon> Cancelar póliza
+        </button>
+        <button mat-flat-button (click)="renovar()" [disabled]="procesando()">
+          <mat-icon>autorenew</mat-icon> Renovar
+        </button>
+      </div>
+    }
+  </header>
+
+  @if (procesando()) {
+    <mat-progress-bar mode="indeterminate" class="progreso" />
+  }
+
+  @if (ultimaRenovacion(); as r) {
+    <section class="card renovacion" aria-live="polite">
+      <mat-icon>trending_up</mat-icon>
+      <div>
+        <strong>Renovación aplicada con IPC {{ r.anioIpc }} ({{ r.ipcAplicado | number: '1.1-3' }} %)</strong>
+        <div class="muted">
+          Canon <span class="mono">{{ r.canonAnterior | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</span> →
+          <span class="mono">{{ r.canonNuevo | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</span> · Prima
+          <span class="mono">{{ r.primaAnterior | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</span> →
+          <span class="mono">{{ r.primaNueva | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</span>
+        </div>
+      </div>
+    </section>
+  }
+
+  <section class="resumen">
+    <div class="card dato">
+      <span class="etiqueta">Canon mensual</span>
+      <span class="valor mono">{{ p.canonMensual | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</span>
+    </div>
+    <div class="card dato">
+      <span class="etiqueta">Prima</span>
+      <span class="valor mono">{{ p.prima | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</span>
+    </div>
+    <div class="card dato">
+      <span class="etiqueta">Vigencia ({{ p.mesesVigencia }} meses)</span>
+      <span class="valor">{{ p.fechaInicio | date: 'dd/MM/yyyy' }} – {{ p.fechaFin | date: 'dd/MM/yyyy' }}</span>
+    </div>
+    <div class="card dato">
+      <span class="etiqueta">Tomador</span>
+      <span class="valor">{{ p.tomador.tipoDocumento }} {{ p.tomador.documento }}</span>
+      @if (p.tomador.email) {
+        <span class="muted small">{{ p.tomador.email }}</span>
+      }
+    </div>
+  </section>
+
+  @if (p.fechaCancelacion) {
+    <p class="muted">Cancelada el {{ p.fechaCancelacion | date: 'dd/MM/yyyy' }}.</p>
+  }
+
+  <section class="card">
+    <header class="riesgos-encabezado">
+      <h2>Riesgos <span class="muted">({{ activos().length }} activos de {{ listaRiesgos().length }})</span></h2>
+      @if (esColectiva() && !cancelada()) {
+        <button mat-stroked-button (click)="agregarRiesgo()" [disabled]="procesando()">
+          <mat-icon>add_home</mat-icon> Agregar riesgo
+        </button>
+      }
+    </header>
+
+    @if (riesgos.isLoading() && !riesgos.hasValue()) {
+      <div class="esqueleto" aria-busy="true"><span class="skeleton"></span><span class="skeleton"></span></div>
+    } @else if (listaRiesgos().length === 0) {
+      <p class="estado-vista muted">La póliza no tiene riesgos.</p>
+    } @else {
+      <div class="tabla">
+        <table mat-table [dataSource]="listaRiesgos()" aria-label="Riesgos de la póliza">
+          <ng-container matColumnDef="inmueble">
+            <th mat-header-cell *matHeaderCellDef>Inmueble</th>
+            <td mat-cell *matCellDef="let r">
+              <div>{{ r.direccion }}</div>
+              <div class="muted small">{{ r.ciudad }}</div>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="arrendatario">
+            <th mat-header-cell *matHeaderCellDef>Arrendatario</th>
+            <td mat-cell *matCellDef="let r">
+              <div>{{ r.arrendatario.nombre }}</div>
+              <div class="muted small">{{ r.arrendatario.documento }}</div>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="arrendador">
+            <th mat-header-cell *matHeaderCellDef>Arrendador</th>
+            <td mat-cell *matCellDef="let r">
+              <div>{{ r.arrendador.nombre }}</div>
+              <div class="muted small">{{ r.arrendador.documento }}</div>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="canon">
+            <th mat-header-cell *matHeaderCellDef class="num">Canon</th>
+            <td mat-cell *matCellDef="let r" class="num mono">{{ r.canonMensual | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="inclusion">
+            <th mat-header-cell *matHeaderCellDef>Inclusión</th>
+            <td mat-cell *matCellDef="let r">{{ r.fechaInclusion | date: 'dd/MM/yyyy' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="estado">
+            <th mat-header-cell *matHeaderCellDef>Estado</th>
+            <td mat-cell *matCellDef="let r"><app-estado-chip [estado]="r.estado" /></td>
+          </ng-container>
+          <ng-container matColumnDef="acciones">
+            <th mat-header-cell *matHeaderCellDef><span class="cdk-visually-hidden">Acciones</span></th>
+            <td mat-cell *matCellDef="let r" class="num">
+              @if (puedeCancelarRiesgo(r)) {
+                <button
+                  mat-icon-button
+                  (click)="cancelarRiesgo(r)"
+                  [disabled]="procesando()"
+                  matTooltip="Cancelar riesgo"
+                  [attr.aria-label]="'Cancelar riesgo ' + r.direccion"
+                >
+                  <mat-icon>remove_circle_outline</mat-icon>
+                </button>
+              } @else if (!cancelada()) {
+                <mat-icon class="bloqueado" [matTooltip]="motivoNoCancelable(r)" tabindex="0" [attr.aria-label]="motivoNoCancelable(r)">
+                  info_outline
+                </mat-icon>
+              }
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="columnas"></tr>
+          <tr mat-row *matRowDef="let r; columns: columnas" [class.inactivo]="r.estado !== 'ACTIVO'"></tr>
+        </table>
+      </div>
+    }
+  </section>
+} @else {
+  <section class="card esqueleto" aria-busy="true" aria-label="Cargando póliza">
+    <span class="skeleton corto"></span>
+    <span class="skeleton"></span>
+    <span class="skeleton"></span>
+  </section>
+}

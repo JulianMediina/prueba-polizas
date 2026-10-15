@@ -1,0 +1,116 @@
+<header class="encabezado">
+  <div>
+    <h1>Pólizas de arrendamiento</h1>
+    <p class="muted">Consulte, renueve y administre pólizas individuales y colectivas.</p>
+  </div>
+  <button mat-flat-button (click)="nueva()">
+    <mat-icon>add</mat-icon>
+    Nueva póliza
+  </button>
+</header>
+
+<section class="card">
+  <div class="filtros">
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Tipo</mat-label>
+      <mat-select [value]="tipo()" (valueChange)="filtrarTipo($event)">
+        <mat-option [value]="null">Todos</mat-option>
+        @for (t of tipos; track t) {
+          <mat-option [value]="t">{{ t === 'INDIVIDUAL' ? 'Individual' : 'Colectiva' }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Estado</mat-label>
+      <mat-select [value]="estado()" (valueChange)="filtrarEstado($event)">
+        <mat-option [value]="null">Todos</mat-option>
+        @for (e of estados; track e) {
+          <mat-option [value]="e">{{ e.charAt(0) + e.slice(1).toLowerCase() }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (hayFiltros()) {
+      <button mat-button (click)="limpiarFiltros()">Limpiar filtros</button>
+    }
+    <span class="espaciador"></span>
+    <span class="muted total">{{ total() }} {{ total() === 1 ? 'póliza' : 'pólizas' }}</span>
+  </div>
+
+  @if (polizas.error()) {
+    <div class="estado-vista" role="alert">
+      <mat-icon>cloud_off</mat-icon>
+      <p>No fue posible cargar las pólizas.</p>
+      <button mat-stroked-button (click)="polizas.reload()">Reintentar</button>
+    </div>
+  } @else if (polizas.isLoading() && !polizas.hasValue()) {
+    <div class="esqueleto" aria-busy="true" aria-label="Cargando pólizas">
+      @for (i of esqueleto; track i) {
+        <span class="skeleton"></span>
+      }
+    </div>
+  } @else if (filas().length === 0) {
+    <div class="estado-vista">
+      <mat-icon>search_off</mat-icon>
+      <p>{{ hayFiltros() ? 'Ninguna póliza coincide con los filtros.' : 'Aún no hay pólizas registradas.' }}</p>
+    </div>
+  } @else {
+    <div class="tabla" [class.recargando]="polizas.isLoading()">
+      <table mat-table [dataSource]="filas()" aria-label="Pólizas">
+        <ng-container matColumnDef="numero">
+          <th mat-header-cell *matHeaderCellDef>Número</th>
+          <td mat-cell *matCellDef="let p"><span class="mono numero">{{ p.numero }}</span></td>
+        </ng-container>
+        <ng-container matColumnDef="tipo">
+          <th mat-header-cell *matHeaderCellDef>Tipo</th>
+          <td mat-cell *matCellDef="let p">{{ p.tipo === 'INDIVIDUAL' ? 'Individual' : 'Colectiva' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="tomador">
+          <th mat-header-cell *matHeaderCellDef>Tomador</th>
+          <td mat-cell *matCellDef="let p">
+            <div class="tomador">{{ p.tomador.nombre }}</div>
+            <div class="muted small">{{ p.tomador.tipoDocumento }} {{ p.tomador.documento }}</div>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="vigencia">
+          <th mat-header-cell *matHeaderCellDef>Vigencia</th>
+          <td mat-cell *matCellDef="let p" class="nowrap">
+            {{ p.fechaInicio | date: 'dd/MM/yyyy' }} – {{ p.fechaFin | date: 'dd/MM/yyyy' }}
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="canon">
+          <th mat-header-cell *matHeaderCellDef class="num">Canon</th>
+          <td mat-cell *matCellDef="let p" class="num mono">{{ p.canonMensual | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="prima">
+          <th mat-header-cell *matHeaderCellDef class="num">Prima</th>
+          <td mat-cell *matCellDef="let p" class="num mono">{{ p.prima | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="estado">
+          <th mat-header-cell *matHeaderCellDef>Estado</th>
+          <td mat-cell *matCellDef="let p"><app-estado-chip [estado]="p.estado" /></td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columnas"></tr>
+        <tr
+          mat-row
+          *matRowDef="let p; columns: columnas"
+          class="clickable"
+          tabindex="0"
+          role="link"
+          [attr.aria-label]="'Ver póliza ' + p.numero"
+          (click)="abrir(p)"
+          (keydown.enter)="abrir(p)"
+        ></tr>
+      </table>
+    </div>
+  }
+
+  <mat-paginator
+    [length]="total()"
+    [pageIndex]="pagina()"
+    [pageSize]="tamano()"
+    [pageSizeOptions]="[10, 20, 50]"
+    (page)="cambiarPagina($event)"
+    aria-label="Paginación de pólizas"
+  />
+</section>

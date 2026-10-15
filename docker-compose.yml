@@ -1,0 +1,68 @@
+# Entorno local completo: cp .env.example .env && docker compose up --build
+#   Frontend:     http://localhost:8080
+#   API directa:  http://localhost:8081  (exige x-api-key)
+name: polizas
+
+services:
+  postgres:
+    image: postgres:16.15-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-polizas}
+      POSTGRES_USER: ${DB_OWNER_USER:-polizas_owner}
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?Defina DB_OWNER_PASSWORD en .env}
+      DB_APP_USER: ${DB_APP_USER:-polizas_app}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?Defina DB_APP_PASSWORD en .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/01-roles.sh:/docker-entrypoint-initdb.d/01-roles.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    image: polizas-backend:local
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-polizas}
+      DB_APP_USER: ${DB_APP_USER:-polizas_app}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+      DB_OWNER_USER: ${DB_OWNER_USER:-polizas_owner}
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD}
+      API_KEY: ${API_KEY:?Defina API_KEY en .env}
+      CORE_BASE_URL: http://localhost:8080
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    image: polizas-frontend:local
+    environment:
+      API_KEY: ${API_KEY}
+      BACKEND_HOST: backend
+      ORIGIN_SECRET: ""
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    restart: unless-stopped
+
+volumes:
+  pgdata:

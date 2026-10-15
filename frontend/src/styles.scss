@@ -1,0 +1,185 @@
+@use '@angular/material' as mat;
+@use './styles/theme-colors' as brand;
+
+// Sistema visual "Corporativo seguros": azul petróleo, verde azulado y ámbar.
+// Tipografías autoalojadas (@fontsource) para que la CSP no dependa de CDNs.
+
+:root {
+  --color-primary: #0b3c5d;
+  --color-primary-hover: #0e4a72;
+  --color-secondary: #1d7874;
+  --color-accent: #f2a541;
+  --color-bg: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-border: #dde3ea;
+  --color-text: #1f2933;
+  --color-text-muted: #52606d;
+  --color-success: #2e7d32;
+  --color-warning: #ed6c02;
+  --color-error: #c62828;
+
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  --radius: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --shadow-1: 0 1px 2px rgb(16 42 67 / 6%), 0 1px 3px rgb(16 42 67 / 8%);
+}
+
+html {
+  color-scheme: light;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: brand.$primary-palette,
+        tertiary: brand.$tertiary-palette,
+      ),
+      typography: (
+        plain-family: 'Inter',
+        brand-family: 'Inter',
+        bold-weight: 600,
+        medium-weight: 500,
+        regular-weight: 400,
+      ),
+      density: 0,
+    )
+  );
+
+  // El tono 40 de la paleta generada es más claro que el color de marca: se fija el primario exacto.
+  @include mat.theme-overrides(
+    (
+      primary: #0b3c5d,
+      on-primary: #ffffff,
+      primary-container: #cee5ff,
+      surface: #ffffff,
+      background: #f5f7fa,
+      corner-small: 8px,
+      corner-medium: 8px,
+    )
+  );
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 24px;
+  line-height: 32px;
+}
+
+h2 {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+h3 {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: -0.01em;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+}
+
+// Foco visible y consistente para navegación por teclado
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+// Tablas de Material más densas y legibles
+.mat-mdc-table {
+  background: transparent !important;
+}
+
+.mat-mdc-header-cell {
+  color: var(--color-text-muted);
+  font-weight: 600 !important;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mat-mdc-row.clickable {
+  cursor: pointer;
+
+  &:hover {
+    background: #eef3f8;
+  }
+}
+
+.skeleton {
+  display: block;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e9edf2 25%, #f4f6f9 37%, #e9edf2 63%);
+  background-size: 400% 100%;
+  animation: skeleton 1.2s ease infinite;
+}
+
+@keyframes skeleton {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+.snack-error {
+  --mat-snack-bar-container-color: #5f1414;
+}
+
+.snack-ok {
+  --mat-snack-bar-container-color: #12432f;
+}
