@@ -57,7 +57,8 @@ comparten con negocio de forma transparente.
 2. **CI como puerta de calidad:** build, tests, análisis estático (Sonar), escaneo de secretos y de dependencias;
    no se mergea en rojo.
 3. **Tests en las reglas de negocio críticas** y tests de regresión para cada incidente corregido.
-4. **Trunk-based development** con ramas cortas y *feature flags* para lo que no está listo.
+4. **Ramas de vida corta** (2–3 días como máximo) y *feature flags* para integrar temprano lo que aún no está listo
+   para el usuario.
 5. **Conventional Commits** y versionado semántico; changelog generado.
 6. **Definition of Done compartida:** código revisado, tests, documentación mínima, observabilidad (logs, métricas,
    alertas) y despliegue verificado.
@@ -65,6 +66,57 @@ comparten con negocio de forma transparente.
 8. **ADRs** para decisiones de arquitectura; IaC para toda la infraestructura.
 9. **Seguridad desde el pipeline:** sin secretos en el código, dependencias actualizadas (Dependabot), mínimo
    privilegio.
+10. **Gitflow como modelo de ramas:** encaja con un equipo que hoy no tiene estándares, entrega por versiones y
+    convive con un CORE legado que exige releases planificados y validados.
+
+    | Rama | Sale de | Se integra en | Para qué |
+    |---|---|---|---|
+    | `main` | — | — | Solo lo que está en producción; cada merge lleva un tag `vX.Y.Z` |
+    | `develop` | `main` | `release/*` | Integración continua del sprint; siempre debe compilar y pasar CI |
+    | `feature/<ticket>-<desc>` | `develop` | `develop` (PR) | Una historia por rama, vida corta, detrás de *feature flag* si no está lista |
+    | `release/X.Y.0` | `develop` | `main` + `develop` | Congela el alcance: solo correcciones, QA y notas de versión |
+    | `hotfix/X.Y.Z` | `main` | `main` + `develop` (+ `release/*` abierta) | Incidentes críticos en producción; se despliega sin esperar al sprint |
+
+    ```mermaid
+    gitGraph
+      commit id: "v1.0.0" tag: "v1.0.0"
+      branch develop
+      checkout develop
+      commit id: "base sprint"
+      branch feature/POL-42-renovacion
+      checkout feature/POL-42-renovacion
+      commit id: "renovación IPC"
+      checkout develop
+      merge feature/POL-42-renovacion id: "PR #42"
+      branch release/1.1.0
+      checkout release/1.1.0
+      commit id: "fix QA"
+      checkout main
+      merge release/1.1.0 id: "v1.1.0" tag: "v1.1.0"
+      checkout develop
+      merge release/1.1.0 id: "back-merge"
+      checkout main
+      branch hotfix/1.1.1
+      checkout hotfix/1.1.1
+      commit id: "fix seguridad"
+      checkout main
+      merge hotfix/1.1.1 id: "v1.1.1" tag: "v1.1.1"
+      checkout develop
+      merge hotfix/1.1.1 id: "hotfix a develop"
+    ```
+
+    **Reglas que lo hacen funcionar:**
+    - `main` y `develop` protegidas: solo se entra por PR con CI en verde y al menos una aprobación (dos en
+      `release/*` y `hotfix/*`).
+    - *Squash merge* de `feature/*` hacia `develop` (historia limpia). Los merges de `release/*` y `hotfix/*` son
+      merges normales con tag, para conservar la trazabilidad de la versión.
+    - **Todo `hotfix` vuelve a `develop`** (y a la `release` abierta) el mismo día. Si una feature en curso necesita
+      el fix antes, se trae con `git cherry-pick -x` (ver [Módulo 4](modulo-4-git.md)).
+    - Versionado semántico con los tags de `main`; el changelog se genera a partir de los Conventional Commits.
+    - Ambientes: `develop` → desarrollo, `release/*` → QA/staging, `main` → producción.
+    - Para evitar la deuda típica de Gitflow (ramas largas, merges dolorosos): las features duran pocos días, una
+      `release` no vive más de una semana y se revisa en cada retro si el equipo ya está listo para evolucionar a
+      *trunk-based* cuando el CI y los *feature flags* estén maduros.
 
 ## 5. Gestionar la presión del negocio sin comprometer la calidad
 
