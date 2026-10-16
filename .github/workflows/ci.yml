@@ -54,6 +54,11 @@ jobs:
       - run: npx ng lint
       - run: npx ng test --watch=false
       - run: npx ng build --configuration production
+      - name: El index.html no debe tener scripts en línea (los bloquea la CSP)
+        run: |
+          if grep -Eq '<script>|onload=' dist/frontend/browser/index.html; then
+            echo "::error::index.html tiene scripts en línea; la CSP script-src 'self' los bloquearía"; exit 1
+          fi
       - name: La API key nunca debe estar en el bundle
         run: |
           if grep -rqi "x-api-key" dist/; then
