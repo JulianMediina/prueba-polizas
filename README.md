@@ -14,12 +14,18 @@ con el CORE e infraestructura como código.
 - API directa (exige `x-api-key`): `https://d3l78drj5ly5ij.cloudfront.net/polizas`. La key de la demo se entrega por separado; no está en
   el repositorio.
 
+## Documento de entrega
+
+Las respuestas de los módulos 1, 3, 4 y 5 (con diagramas), más el enlace del Módulo 2, están en un solo PDF:
+[**Prueba-Desarrollador-TI-Julian-Medina.pdf**](docs/entrega/Prueba-Desarrollador-TI-Julian-Medina.pdf).
+Se genera desde los Markdown de `docs/` con `cd docs/entrega && npm ci && npm run pdf` (requiere Chrome).
+
 ## Entregables por módulo
 
 | Módulo | Entregable | Ubicación |
 |---|---|---|
 | 1 – Diseño de sistema | Arquitectura AWS, 3 patrones, modelo de datos, escalabilidad, observabilidad, tolerancia a fallos, versionado, diagramas C4/secuencia/ER y ADRs | [docs/modulo-1-arquitectura.md](docs/modulo-1-arquitectura.md), [docs/adr/](docs/adr/) |
-| 2 – Código | API Spring Boot en capas, entidades `Poliza`/`Riesgo`, 6 endpoints + mock del CORE, reglas de negocio, `x-api-key`, 64 tests | [backend/](backend/) ([README](backend/README.md)) |
+| 2 – Código | Enlace y resumen: [docs/modulo-2-codigo.md](docs/modulo-2-codigo.md). API Spring Boot en capas, entidades `Poliza`/`Riesgo`, 6 endpoints + mock del CORE, reglas de negocio, `x-api-key`, 64 tests | [backend/](backend/) ([README](backend/README.md)) |
 | 2 – Interfaz | SPA Angular 22 + Material M3 | [frontend/](frontend/) |
 | 3 – BBDD | 6 estrategias de optimización + scripts Oracle y benchmark PostgreSQL | [docs/modulo-3-sql.md](docs/modulo-3-sql.md), [sql/](sql/) |
 | 4 – Git | `git cherry-pick -x` + demo reproducible | [docs/modulo-4-git.md](docs/modulo-4-git.md), [scripts/demo-cherry-pick.sh](scripts/demo-cherry-pick.sh) |
