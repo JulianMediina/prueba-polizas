@@ -33,3 +33,7 @@ override.tf.json
 !.vscode/extensions.json
 .DS_Store
 Thumbs.db
+
+# Respuestas de los módulos: fuente local del PDF de entrega (entrega/), no se versionan
+docs/*.md
+docs/adr/

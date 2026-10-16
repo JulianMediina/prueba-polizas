@@ -42,7 +42,7 @@ Toda acción que modifica una póliza o un riesgo publica `PolizaModificada`. De
 aparte, `CoreSyncListener` llama al puerto `CorePolizasPort`; el adapter HTTP envía
 `{"evento":"ACTUALIZACION","polizaId":…,"riesgoId":…,"operacion":…}` a `POST /core-mock/evento` con timeout, 3
 intentos con backoff exponencial y circuit breaker. Si el CORE falla, se registra el error y la operación **no se
-revierte** (en producción: outbox, ver `docs/adr/0002`). El mock solo registra en el log:
+revierte** (en producción: outbox, ver ADR 0002 en el documento de entrega). El mock solo registra en el log:
 
 ```
 CORE-MOCK evento=ACTUALIZACION polizaId=12 riesgoId=null operacion=RENOVACION
