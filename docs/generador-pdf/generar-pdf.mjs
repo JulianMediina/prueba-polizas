@@ -1,7 +1,8 @@
 // Genera el documento único de entrega (PDF) a partir de los Markdown de docs/.
-// Uso: cd docs/entrega && npm ci && npm run pdf
+// Los Markdown de los módulos y ADRs son solo la fuente local del PDF: no se versionan (ver .gitignore).
+// Uso: cd docs/generador-pdf && npm ci && npm run pdf  →  entrega/Brayan_Barrantes_Prueba_Tecnica.pdf
 // Requiere Google Chrome o Chromium instalado (CHROME_PATH para indicar otra ruta).
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,9 +13,9 @@ import puppeteer from 'puppeteer-core';
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const RAIZ = path.resolve(AQUI, '..', '..');
 const REPO = 'https://github.com/JulianMediina/prueba-polizas';
-const SALIDA = path.join(AQUI, 'Prueba-Desarrollador-TI-Julian-Medina.pdf');
-
-const CANDIDATO = 'Julián Medina';
+const CANDIDATO = 'Brayan Julián Barrantes Medina';
+// Convención de la entrega: NombreApellido_Prueba_Tecnica.pdf
+const SALIDA = path.join(RAIZ, 'entrega', 'Brayan_Barrantes_Prueba_Tecnica.pdf');
 const SECCIONES = [
   'docs/modulo-1-arquitectura.md',
   'docs/modulo-2-codigo.md',
@@ -46,7 +47,11 @@ const slug = (texto) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 
-/** Convierte un .md en HTML: Mermaid como <pre class="mermaid">, enlaces relativos → GitHub. */
+/** Ancla interna de cada documento incluido en el PDF (los enlaces entre ellos no salen del documento). */
+const ancla = (archivo) => `doc-${slug(path.posix.basename(archivo, '.md'))}`;
+const INCLUIDOS = new Set([...SECCIONES, ...ANEXOS]);
+
+/** Convierte un .md en HTML: Mermaid como <pre class="mermaid">, enlaces internos → anclas, el resto → GitHub. */
 function renderizar(archivo, { nivelBase = 1, prefijoId }) {
   const directorio = path.posix.dirname(archivo);
   const titulos = [];
@@ -70,6 +75,9 @@ function renderizar(archivo, { nivelBase = 1, prefijoId }) {
         let destino = href;
         if (!/^(https?:|mailto:|#)/.test(href)) {
           const relativo = path.posix.normalize(path.posix.join(directorio, href));
+          if (INCLUIDOS.has(relativo)) {
+            return `<a href="#${ancla(relativo)}">${texto}</a>`;
+          }
           const tipo = /\.[a-z0-9]+$/i.test(relativo) ? 'blob' : 'tree';
           destino = `${REPO}/${tipo}/main/${relativo}`;
         }
@@ -87,7 +95,7 @@ function construirHtml() {
 
   SECCIONES.forEach((archivo, i) => {
     const { html, titulos } = renderizar(archivo, { prefijoId: `m${i + 1}` });
-    partes.push(`<section class="modulo">${html}</section>`);
+    partes.push(`<section class="modulo" id="${ancla(archivo)}">${html}</section>`);
     indice.push(...titulos.filter((t) => t.nivel <= 2));
   });
 
@@ -95,7 +103,7 @@ function construirHtml() {
   partes.push(
     `<section class="modulo"><h1 id="anexo-adr">Anexo – Registros de decisiones de arquitectura (ADR)</h1>
      <p>Cada ADR documenta una decisión del Módulo 1 o del despliegue: contexto, decisión y consecuencias.</p>
-     ${anexos.map((a) => `<div class="adr">${a.html}</div>`).join('\n')}</section>`,
+     ${anexos.map((a, i) => `<div class="adr" id="${ancla(ANEXOS[i])}">${a.html}</div>`).join('\n')}</section>`,
   );
   indice.push({ nivel: 1, texto: 'Anexo – Registros de decisiones de arquitectura (ADR)', id: 'anexo-adr' });
   anexos.forEach((a) => indice.push(...a.titulos.filter((t) => t.nivel === 2)));
@@ -150,6 +158,7 @@ async function main() {
   if (!chrome) throw new Error('No se encontró Chrome/Chromium; defina CHROME_PATH');
 
   const html = construirHtml();
+  mkdirSync(path.dirname(SALIDA), { recursive: true });
   const htmlPath = path.join(AQUI, 'entrega.html');
   writeFileSync(htmlPath, html);
 

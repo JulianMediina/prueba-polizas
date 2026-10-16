@@ -5,8 +5,8 @@
 #                                                               ├─ backend  (Spring Boot)
 #                                                               └─ postgres (volumen en EBS cifrado)
 #
-# La arquitectura objetivo de producción (EKS, Aurora, EventBridge...) está en docs/modulo-1-arquitectura.md;
-# esta es una simplificación de costo documentada en docs/adr/0004-despliegue-demo-ec2.md.
+# La arquitectura objetivo de producción (EKS, Aurora, EventBridge...) está en el Módulo 1 del documento de entrega
+# (entrega/Brayan_Barrantes_Prueba_Tecnica.pdf); esta es una simplificación de costo documentada en su ADR 0004.
 
 locals {
   nombre = "${var.proyecto}-${var.entorno}"

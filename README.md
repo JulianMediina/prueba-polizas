@@ -16,20 +16,21 @@ con el CORE e infraestructura como código.
 
 ## Documento de entrega
 
-Las respuestas de los módulos 1, 3, 4 y 5 (con diagramas), más el enlace del Módulo 2, están en un solo PDF:
-[**Prueba-Desarrollador-TI-Julian-Medina.pdf**](docs/entrega/Prueba-Desarrollador-TI-Julian-Medina.pdf).
-Se genera desde los Markdown de `docs/` con `cd docs/entrega && npm ci && npm run pdf` (requiere Chrome).
+📄 **[Brayan_Barrantes_Prueba_Tecnica.pdf](entrega/Brayan_Barrantes_Prueba_Tecnica.pdf)**, en la carpeta [`entrega/`](entrega/).
+
+Un solo documento con las respuestas de los módulos 1, 3, 4 y 5 (texto y diagramas), el enlace del Módulo 2 y,
+como anexo, los registros de decisiones de arquitectura (ADR).
 
 ## Entregables por módulo
 
 | Módulo | Entregable | Ubicación |
 |---|---|---|
-| 1 – Diseño de sistema | Arquitectura AWS, 3 patrones, modelo de datos, escalabilidad, observabilidad, tolerancia a fallos, versionado, diagramas C4/secuencia/ER y ADRs | [docs/modulo-1-arquitectura.md](docs/modulo-1-arquitectura.md), [docs/adr/](docs/adr/) |
-| 2 – Código | Enlace y resumen: [docs/modulo-2-codigo.md](docs/modulo-2-codigo.md). API Spring Boot en capas, entidades `Poliza`/`Riesgo`, 6 endpoints + mock del CORE, reglas de negocio, `x-api-key`, 64 tests | [backend/](backend/) ([README](backend/README.md)) |
+| 1 – Diseño de sistema | Arquitectura AWS, 3 patrones, modelo de datos, escalabilidad, observabilidad, tolerancia a fallos, versionado, diagramas C4/secuencia/ER y ADRs | [Documento de entrega](entrega/Brayan_Barrantes_Prueba_Tecnica.pdf): Módulo 1 y anexo ADR |
+| 2 – Código | API Spring Boot en capas, entidades `Poliza`/`Riesgo`, 6 endpoints + mock del CORE, reglas de negocio, `x-api-key`, 64 tests | [backend/](backend/) ([README](backend/README.md)) |
 | 2 – Interfaz | SPA Angular 22 + Material M3 | [frontend/](frontend/) |
-| 3 – BBDD | 6 estrategias de optimización + scripts Oracle y benchmark PostgreSQL | [docs/modulo-3-sql.md](docs/modulo-3-sql.md), [sql/](sql/) |
-| 4 – Git | `git cherry-pick -x` + demo reproducible | [docs/modulo-4-git.md](docs/modulo-4-git.md), [scripts/demo-cherry-pick.sh](scripts/demo-cherry-pick.sh) |
-| 5 – Liderazgo | Prioridades, organización, métricas, prácticas y gestión de la presión | [docs/modulo-5-liderazgo.md](docs/modulo-5-liderazgo.md) |
+| 3 – BBDD | 6 estrategias de optimización + scripts Oracle y benchmark PostgreSQL | [Documento de entrega](entrega/Brayan_Barrantes_Prueba_Tecnica.pdf): Módulo 3 · scripts en [sql/](sql/) |
+| 4 – Git | `git cherry-pick -x` + demo reproducible | [Documento de entrega](entrega/Brayan_Barrantes_Prueba_Tecnica.pdf): Módulo 4 · demo en [scripts/demo-cherry-pick.sh](scripts/demo-cherry-pick.sh) |
+| 5 – Liderazgo | Prioridades, organización, métricas, prácticas y gestión de la presión | [Documento de entrega](entrega/Brayan_Barrantes_Prueba_Tecnica.pdf): Módulo 5 |
 | Transversal | IaC Terraform, CI/CD con OIDC, escaneo de seguridad | [infra/](infra/), [.github/workflows/](.github/workflows/) |
 
 ## Arquitectura del despliegue demo
@@ -54,7 +55,7 @@ flowchart LR
   servidor. La API directa (`/polizas`, `/riesgos`, `/core-mock`) exige que el cliente envíe su propia key.
 - **Secretos** generados por Terraform en SSM Parameter Store (SecureString).
 - Costo estimado de 4 días: **< US$3**. Justificación y equivalencias con producción en
-  [ADR 0004](docs/adr/0004-despliegue-demo-ec2.md).
+  el ADR 0004 del [documento de entrega](entrega/Brayan_Barrantes_Prueba_Tecnica.pdf).
 
 ## Ejecutar en local
 
