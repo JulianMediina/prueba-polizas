@@ -183,3 +183,13 @@ h3 {
 .snack-ok {
   --mat-snack-bar-container-color: #12432f;
 }
+
+// Separadores de tabla suaves
+.mat-mdc-table {
+  --mat-table-row-item-outline-color: var(--color-border);
+}
+
+// La etiqueta flotante del primer campo outline no debe quedar recortada bajo el título del diálogo
+.mat-mdc-dialog-container .mat-mdc-dialog-content {
+  padding-top: 8px !important;
+}
