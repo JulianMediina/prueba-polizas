@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Build en la plataforma del builder (el bundle es estático); imagen final sin RUN → multiarquitectura sin emulación.
 
-FROM --platform=$BUILDPLATFORM node:24.22.0-alpine AS build
+FROM --platform=$BUILDPLATFORM node:26.12.0-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
