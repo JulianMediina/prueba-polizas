@@ -2,7 +2,7 @@
 # Compilación en la plataforma del builder (el JAR es independiente de la arquitectura);
 # la imagen final no tiene instrucciones RUN, así que se construye para arm64/amd64 sin emulación.
 
-FROM --platform=$BUILDPLATFORM eclipse-temurin:21.0.12.1_1-jdk AS build
+FROM --platform=$BUILDPLATFORM eclipse-temurin:24.0.2_12-jdk AS build
 WORKDIR /src
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
@@ -11,7 +11,7 @@ COPY src/ src/
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q package -DskipTests \
  && java -Djarmode=tools -jar target/polizas.jar extract --layers --launcher --destination target/extracted
 
-FROM eclipse-temurin:21.0.12.1_1-jre-alpine
+FROM eclipse-temurin:24.0.2_12-jre-alpine
 WORKDIR /app
 # Capas ordenadas de menos a más cambiantes para aprovechar la caché
 COPY --from=build /src/target/extracted/dependencies/ ./
